@@ -46,6 +46,14 @@ describe("tokenizeRewardText", () => {
     for (const r of result.recognized) expect(r.count).toBe(1);
   });
 
+  it("fuzzy-matches a slightly garbled OCR name", () => {
+    // OCR dropped the apostrophe and misread one letter (Archery -> Archary)
+    const result = tokenizeRewardText("1x Countess Seskes Rune of Archary");
+    const names = result.recognized.map((r) => r.name);
+    expect(names).toContain("Countess Seske's Rune of Archery");
+    expect(result.recognized[0]?.fuzzy).toBe(true);
+  });
+
   it("recognizes a league Ancient Rune", () => {
     const result = tokenizeRewardText("Ancient Rune of Animosity");
     expect(result.recognized).toHaveLength(1);

@@ -1,4 +1,9 @@
-import { ITEM_BY_TRANSLATED, type BaseType } from "@/assets/data";
+import {
+  ITEM_BY_TRANSLATED,
+  ITEM_NS_NAMES,
+  type BaseType,
+} from "@/assets/data";
+import { distance } from "fastest-levenshtein";
 
 export type ItemNamespace = "ITEM" | "GEM" | "UNIQUE";
 
@@ -18,7 +23,7 @@ export interface TokenizeResult {
 
 const NAMESPACES: ItemNamespace[] = ["ITEM", "GEM", "UNIQUE"];
 
-// Longest item name we'll try to match (in words), e.g. "Ancient Rune of the Titan".
+// Longest item name we'll try to match (in words), e.g. "Countess Seske's Rune of Archery".
 const MAX_NAME_WORDS = 6;
 
 // Count marker: "6x ", "1x ", "12 " (x optional). Captures the count.
@@ -42,13 +47,8 @@ function cleanWord(word: string): string {
   return word.replace(/[’`´]/g, "'").replace(/[^A-Za-z'-]/g, "");
 }
 
-/**
- * Given the text right after a count marker (possibly trailed by OCR noise),
- * find the LONGEST known item name that the text starts with.
- */
-function matchLongestNamePrefix(
-  segment: string,
-): { ns: ItemNamespace; base: BaseType } | undefined {
+/** Cleaned leading words of a segment, stopped at the first garbage word. */
+function segmentWords(segment: string): string[] {
   const words: string[] = [];
   for (const raw of segment.split(/\s+/)) {
     const w = cleanWord(raw);
@@ -56,19 +56,58 @@ function matchLongestNamePrefix(
     words.push(w);
     if (words.length >= MAX_NAME_WORDS) break;
   }
+  return words;
+}
 
+/** Longest word-prefix that EXACTLY matches a known item name. */
+function matchExact(
+  words: string[],
+): { ns: ItemNamespace; base: BaseType } | undefined {
   let best: { ns: ItemNamespace; base: BaseType } | undefined;
   for (let n = 1; n <= words.length; n++) {
-    const candidate = words.slice(0, n).join(" ");
-    const match = findExact(candidate);
-    if (match) best = match; // keep the longest that matches
+    const match = findExact(words.slice(0, n).join(" "));
+    if (match) best = match;
   }
   return best;
+}
+
+/**
+ * Fuzzy fallback for OCR errors: finds the closest ITEM name (by Levenshtein
+ * distance) to some word-prefix of the segment. Rewards are all ITEM-namespace
+ * currency/runes, so we only search ITEM names to keep it cheap.
+ */
+function matchFuzzy(
+  words: string[],
+  itemNames: string[],
+): { ns: ItemNamespace; base: BaseType } | undefined {
+  let bestName: string | undefined;
+  let bestDist = Infinity;
+  for (let n = 1; n <= words.length; n++) {
+    const cand = words.slice(0, n).join(" ");
+    if (cand.length < 5) continue;
+    const lc = cand.toLowerCase();
+    for (const name of itemNames) {
+      if (Math.abs(name.length - cand.length) > 4) continue;
+      const d = distance(lc, name.toLowerCase());
+      const threshold = Math.max(2, Math.floor(name.length * 0.2));
+      if (d <= threshold && d < bestDist) {
+        bestDist = d;
+        bestName = name;
+      }
+    }
+  }
+  if (!bestName) return undefined;
+  const found = ITEM_BY_TRANSLATED("ITEM", bestName);
+  return found && found.length ? { ns: "ITEM", base: found[0] } : undefined;
 }
 
 export function tokenizeRewardText(text: string): TokenizeResult {
   const recognized: RecognizedToken[] = [];
   const unrecognized: string[] = [];
+
+  // Materialised lazily — only built if a fuzzy match is actually needed.
+  let itemNamesCache: string[] | undefined;
+  const itemNames = () => (itemNamesCache ??= Array.from(ITEM_NS_NAMES()));
 
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim();
@@ -81,8 +120,13 @@ export function tokenizeRewardText(text: string): TokenizeResult {
     let m: RegExpExecArray | null;
     while ((m = COUNT_ANCHOR.exec(line)) !== null) {
       const count = Number(m[1]);
-      const segment = line.slice(m.index + m[0].length);
-      const match = matchLongestNamePrefix(segment);
+      const words = segmentWords(line.slice(m.index + m[0].length));
+      let match = matchExact(words);
+      let fuzzy = false;
+      if (!match) {
+        match = matchFuzzy(words, itemNames());
+        fuzzy = match != null;
+      }
       if (match) {
         lineMatches.push({
           line: rawLine,
@@ -90,7 +134,7 @@ export function tokenizeRewardText(text: string): TokenizeResult {
           displayName: match.base.name,
           ns: match.ns,
           count,
-          fuzzy: false,
+          fuzzy,
         });
       }
     }
