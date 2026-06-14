@@ -30,8 +30,8 @@ export class ConfigStore {
   }
 
   private async save(contents: string, tmp: boolean) {
-    if (process.env.VITE_DEV_SERVER_URL) return;
-
+    // NOTE: upstream skipped persisting config in dev. We allow it so settings
+    // (hotkeys, league, POESESSID) survive dev restarts.
     if (tmp && !this.isTmpFile) {
       this.cfgPath += ".tmp";
       this.isTmpFile = true;

@@ -1,4 +1,7 @@
-import { screen, globalShortcut } from "electron";
+import { screen, globalShortcut, app } from "electron";
+import fs from "fs";
+import path from "path";
+import Bmp from "@wokwi/bmp-ts";
 import { uIOhook, UiohookKey, UiohookWheelEvent } from "uiohook-napi";
 import {
   isModKey,
@@ -74,6 +77,10 @@ export class Shortcuts {
       if (e.action === "stash-search") {
         stashSearch(e.text, this.clipboard, this.overlay);
       }
+    });
+
+    this.server.onEventAnyClient("CLIENT->MAIN::area-selected", (e) => {
+      this.handleAreaSelected(e);
     });
 
     uIOhook.on("keydown", (e) => {
@@ -269,6 +276,13 @@ export class Shortcuts {
                 });
               })
               .catch(() => {});
+          } else if (entry.action.type === "area-ocr") {
+            if (process.platform !== "win32") return;
+            this.overlay.assertOverlayActive();
+            this.server.sendEventTo("last-active", {
+              name: "MAIN->CLIENT::start-area-select",
+              payload: undefined,
+            });
           }
         },
       );
@@ -285,9 +299,112 @@ export class Shortcuts {
     }
   }
 
+  private handleAreaSelected(e: {
+    rect: { x: number; y: number; width: number; height: number };
+    dpr: number;
+  }) {
+    if (process.platform !== "win32") return;
+    const bounds = this.poeWindow.bounds;
+    if (!bounds) return;
+
+    const dpr = e.dpr || 1;
+    let x = Math.round(e.rect.x * dpr);
+    let y = Math.round(e.rect.y * dpr);
+    let w = Math.round(e.rect.width * dpr);
+    let h = Math.round(e.rect.height * dpr);
+    // clamp to the screenshot bounds
+    x = Math.max(0, Math.min(x, bounds.width - 1));
+    y = Math.max(0, Math.min(y, bounds.height - 1));
+    w = Math.max(1, Math.min(w, bounds.width - x));
+    h = Math.max(1, Math.min(h, bounds.height - y));
+
+    let crop: { width: number; height: number; data: Uint8Array };
+    try {
+      const data = this.poeWindow.screenshot();
+      crop = cropImage(
+        { width: bounds.width, height: bounds.height, data },
+        x,
+        y,
+        w,
+        h,
+      );
+    } catch (err) {
+      this.respondAreaOcr("", 0, `screenshot failed: ${(err as Error).message}`);
+      return;
+    }
+
+    this.ocrWorker
+      .ocrRegion(crop)
+      .then((res) => {
+        this.dumpAreaDebug(crop, { x, y, w, h }, bounds, res.text, res.confidence);
+        this.respondAreaOcr(res.text, res.confidence);
+      })
+      .catch((err) => {
+        const message = (err as Error).message ?? String(err);
+        this.logger.write(`error [AreaOcr] ${message}`);
+        this.dumpAreaDebug(crop, { x, y, w, h }, bounds, "", 0, message);
+        this.respondAreaOcr("", 0, message);
+      });
+  }
+
+  private respondAreaOcr(text: string, confidence: number, error?: string) {
+    this.server.sendEventTo("last-active", {
+      name: "MAIN->CLIENT::reward-ocr",
+      payload: { text, confidence, error },
+    });
+  }
+
+  // Best-effort diagnostics: dumps the cropped region + OCR result to
+  // %APPDATA%/exiled-exchange-2/apt-data/reward-debug for tuning.
+  private dumpAreaDebug(
+    crop: { width: number; height: number; data: Uint8Array },
+    device: { x: number; y: number; w: number; h: number },
+    bounds: { width: number; height: number },
+    text: string,
+    confidence: number,
+    error?: string,
+  ) {
+    try {
+      const dir = path.join(app.getPath("userData"), "apt-data", "reward-debug");
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, "last-ocr.txt"),
+        `device=${JSON.stringify(device)} bounds=${bounds.width}x${bounds.height}\n` +
+          `crop=${crop.width}x${crop.height} confidence=${confidence}\n` +
+          (error ? `ERROR: ${error}\n` : "") +
+          `--- OCR TEXT ---\n${text}\n`,
+      );
+      try {
+        const bmp = Bmp.encode({
+          data: Buffer.from(crop.data),
+          width: crop.width,
+          height: crop.height,
+          bitPP: 32,
+        } as never);
+        fs.writeFileSync(path.join(dir, "last-crop.bmp"), bmp.data);
+      } catch {}
+    } catch {}
+  }
+
   private unregister() {
     globalShortcut.unregisterAll();
   }
+}
+
+function cropImage(
+  full: { width: number; height: number; data: Uint8Array },
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): { width: number; height: number; data: Uint8Array } {
+  const out = new Uint8Array(w * h * 4);
+  const rowBytes = w * 4;
+  for (let row = 0; row < h; row++) {
+    const srcStart = ((y + row) * full.width + x) * 4;
+    out.set(full.data.subarray(srcStart, srcStart + rowBytes), row * rowBytes);
+  }
+  return { width: w, height: h, data: out };
 }
 
 function pressKeysToCopyItemText(

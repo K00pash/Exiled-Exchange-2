@@ -28,6 +28,9 @@ export interface ShortcutAction {
         target: "heist-gems";
       }
     | {
+        type: "area-ocr";
+      }
+    | {
         type: "trigger-event";
         target: string;
       }
@@ -90,6 +93,9 @@ export type IpcEvent =
   | IpcWidgetAction
   | IpcItemText
   | IpcOcrText
+  | IpcStartAreaSelect
+  | IpcAreaSelected
+  | IpcRewardOcr
   | IpcConfigChanged
   | IpcUserAction
   | IpcWriteToFile
@@ -196,6 +202,28 @@ type IpcGameLog = Event<
   "MAIN->CLIENT::game-log",
   {
     lines: string[];
+  }
+>;
+
+// Reward area-OCR price check (league mechanic screens, no in-game text copy)
+type IpcStartAreaSelect = Event<"MAIN->CLIENT::start-area-select">;
+
+type IpcAreaSelected = Event<
+  "CLIENT->MAIN::area-selected",
+  {
+    // selection rectangle in overlay CSS pixels
+    rect: { x: number; y: number; width: number; height: number };
+    // window.devicePixelRatio of the overlay, to map CSS px -> screenshot px
+    dpr: number;
+  }
+>;
+
+type IpcRewardOcr = Event<
+  "MAIN->CLIENT::reward-ocr",
+  {
+    text: string;
+    confidence: number;
+    error?: string;
   }
 >;
 

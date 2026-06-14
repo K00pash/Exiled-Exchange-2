@@ -41,4 +41,10 @@ export class OcrWorker {
     );
     return result;
   }
+
+  async ocrRegion(image: ImageData) {
+    return await this.api.ocrRegion(
+      Comlink.transfer(image, [image.data.buffer]),
+    );
+  }
 }

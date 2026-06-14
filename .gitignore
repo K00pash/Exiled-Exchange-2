@@ -28,3 +28,9 @@ docs/.vitepress/dist
 docs/.vitepress/cache
 
 *.bin
+
+# poecheck dev/debug artifacts
+.playwright-mcp/
+_*.log
+_octest.js
+ee2-renderer-boot.png

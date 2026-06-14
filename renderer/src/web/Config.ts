@@ -795,6 +795,15 @@ function getConfigForHost(): HostConfig {
           action: { type: "ocr-text", target: "heist-gems" },
         });
       }
+    } else if (widget.wmType === "reward-check") {
+      const rewardCheck = widget as widget.RewardCheckWidget;
+      if (rewardCheck.areaOcrKey) {
+        actions.push({
+          shortcut: rewardCheck.areaOcrKey,
+          keepModKeys: true,
+          action: { type: "area-ocr" },
+        });
+      }
     }
   }
 

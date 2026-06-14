@@ -85,3 +85,9 @@ export interface NotepadWidget extends Widget {
   notepadBody: string;
   notepadSize: 0 | 1 | 2;
 }
+
+export interface RewardCheckWidget extends Widget {
+  anchor: Anchor;
+  // hotkey that starts the screen-area selection for OCR price check
+  areaOcrKey: string | null;
+}
