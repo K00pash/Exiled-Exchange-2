@@ -26,19 +26,18 @@ export function ocrRegion(image: ImageData): RegionOcrResult {
     cv.resize(
       colorMat,
       work,
-      new cv.Size(image.width * 2, image.height * 2),
+      new cv.Size(image.width * 3, image.height * 3),
       0,
       0,
       cv.INTER_CUBIC,
     );
-    // BGRA screenshot → grayscale → Otsu binarisation. PoE renders light text
-    // on a dark background, so invert to get dark-on-light for Tesseract.
     cv.cvtColor(work, work, cv.COLOR_BGRA2GRAY);
     cv.threshold(work, work, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
-    // Tesseract expects dark text on a light background. Auto-detect polarity:
-    // light-on-dark (e.g. in-game tooltips) -> mostly dark crop -> invert;
-    // dark-on-light (e.g. the parchment reward panel) -> leave as is.
-    if (cv.mean(work)[0] < 128) {
+    // Tesseract expects dark text on a light background. The reward panels are
+    // dark-on-light parchment (Otsu already gives that), so only invert for a
+    // genuinely dark background (in-game tooltips) — a conservative threshold
+    // avoids mis-inverting icon-heavy parchment crops.
+    if (cv.mean(work)[0] < 60) {
       cv.bitwise_not(work, work);
     }
 
