@@ -54,6 +54,13 @@ describe("tokenizeRewardText", () => {
     expect(result.recognized[0]?.fuzzy).toBe(true);
   });
 
+  it("keeps digits/parentheses in names like (Level 19)", () => {
+    const result = tokenizeRewardText("1x Thaumaturgic Flux (Level 19)");
+    expect(result.recognized[0]?.name).toBe("Thaumaturgic Flux (Level 19)");
+    expect(result.recognized[0]?.count).toBe(1);
+    expect(result.recognized[0]?.fuzzy).toBe(false);
+  });
+
   it("recognizes a league Ancient Rune", () => {
     const result = tokenizeRewardText("Ancient Rune of Animosity");
     expect(result.recognized).toHaveLength(1);

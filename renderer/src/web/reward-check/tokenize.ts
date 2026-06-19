@@ -42,9 +42,11 @@ function findExact(
   return undefined;
 }
 
-/** Normalises curly/back apostrophes and strips other punctuation from a word. */
+/** Normalises curly/back apostrophes and strips other punctuation from a word.
+ *  Keeps digits and parentheses so names like "Thaumaturgic Flux (Level 19)"
+ *  survive intact (stripping them caused fuzzy to match the wrong level). */
 function cleanWord(word: string): string {
-  return word.replace(/[’`´]/g, "'").replace(/[^A-Za-z'-]/g, "");
+  return word.replace(/[’`´]/g, "'").replace(/[^A-Za-z0-9'()-]/g, "");
 }
 
 /** Cleaned leading words of a segment, stopped at the first garbage word. */
