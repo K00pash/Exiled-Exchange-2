@@ -41,18 +41,33 @@ export function createExactStatFilters(
   opts: { searchStatRange: number; defaultAllSelected: boolean },
 ): StatFilter[] {
   performance.mark("create-exact-filters-start");
+  let searchInRange = Math.min(2, opts.searchStatRange);
+  if (item.category === ItemCategory.Tablet) {
+    searchInRange = 0;
+  }
+
   if (item.mapBlighted || item.category === ItemCategory.Invitation) return [];
   if (
     item.isUnidentified &&
     item.rarity === ItemRarity.Unique &&
     !item.isSynthesised
-  )
-    return [];
+  ) {
+    // want implicit here
+
+    return statsByType
+      .filter((mod) => mod.type === ModifierType.Implicit)
+      .map((mod) => calculatedStatToFilter(mod, searchInRange, item))
+      .map((filter) => ({
+        ...filter,
+        disabled: false,
+      }));
+  }
 
   const keepByType = [
     ModifierType.Pseudo,
     ModifierType.Fractured,
     ModifierType.Desecrated,
+    ModifierType.Crafted,
     ModifierType.Enchant,
     ModifierType.Necropolis,
     ModifierType.Sanctum,
@@ -82,10 +97,6 @@ export function createExactStatFilters(
 
   if (item.category === ItemCategory.Flask) {
     keepByType.push(ModifierType.Crafted);
-  }
-  let searchInRange = Math.min(2, opts.searchStatRange);
-  if (item.category === ItemCategory.Tablet) {
-    searchInRange = 0;
   }
 
   const ctx: FiltersCreationContext = {
@@ -224,7 +235,8 @@ export function initUiModFilters(
     statsByType: item.statsByType.map((calc) => {
       if (
         (calc.type === ModifierType.Fractured ||
-          calc.type === ModifierType.Desecrated) &&
+          calc.type === ModifierType.Desecrated ||
+          calc.type === ModifierType.Crafted) &&
         calc.stat.trade.ids[ModifierType.Explicit]
       ) {
         return { ...calc, type: ModifierType.Explicit };
@@ -249,15 +261,27 @@ export function initUiModFilters(
     ctx.statsByType = ctx.statsByType.filter(
       (mod) =>
         mod.type !== ModifierType.Fractured &&
-        mod.type !== ModifierType.Desecrated,
+        mod.type !== ModifierType.Desecrated &&
+        mod.type !== ModifierType.Crafted,
     );
-    ctx.statsByType.push(
-      ...item.statsByType.filter(
-        (mod) =>
-          mod.type === ModifierType.Fractured ||
-          mod.type === ModifierType.Desecrated,
-      ),
+    // since sources are merged, need to filter out the explicit ones here and
+    const statsWithAllSources = item.statsByType.filter(
+      (mod) =>
+        mod.type === ModifierType.Fractured ||
+        mod.type === ModifierType.Desecrated ||
+        mod.type === ModifierType.Crafted,
     );
+    const statsFilteredSources = statsWithAllSources.map((mod) => {
+      const filteredSources = mod.sources.filter((source) => {
+        return source.modifier.info.type === mod.type;
+      });
+      return {
+        ...mod,
+        sources: filteredSources,
+      };
+    });
+    // since filtered now, below calcStatToFilter should only include the correct rolls for special ones
+    ctx.statsByType.push(...statsFilteredSources);
   }
 
   if (item.isVeiled) {
@@ -336,7 +360,7 @@ export function calculatedStatToFilter(
 
   const roll = statSourcesTotal(
     calc.sources,
-    calc.stat.trade.count ? "count" : "sum",
+    item.info.refName === "Mirrored Tablet" ? "max" : "sum",
   );
   const translation = translateStatWithRoll(calc, roll);
 
@@ -381,6 +405,14 @@ export function calculatedStatToFilter(
       filter.tag = FilterTag.Eldritch;
     } else if (item.isSynthesised) {
       filter.tag = FilterTag.Synthesised;
+    } else if (
+      item.info.unique?.base.startsWith("Runemastered") &&
+      item.info.unique?.fixedStats
+    ) {
+      const fixedStats = item.info.unique.fixedStats;
+      if (!fixedStats.includes(filter.statRef)) {
+        filter.tag = FilterTag.Variant;
+      }
     }
   } else if (type === ModifierType.Explicit) {
     if (
@@ -656,7 +688,8 @@ export function finalFilterTweaks(ctx: FiltersCreationContext) {
   for (const filter of ctx.filters) {
     if (
       filter.tag === FilterTag.Fractured ||
-      filter.tag === FilterTag.Desecrated
+      filter.tag === FilterTag.Desecrated ||
+      filter.tag === FilterTag.Crafted
     ) {
       const mod = ctx.item.statsByType.find(
         (mod) => mod.stat.ref === filter.statRef,

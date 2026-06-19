@@ -95,6 +95,8 @@ export default {
   WAYSTONE_RARE_MONSTERS: 'Seltene Monster: ',
   WAYSTONE_DROP_CHANCE: 'Chance auf fallen gelassene Wegsteine: ',
   WAYSTONE_RARITY: 'Gegenstandsseltenheit: ',
+  WAYSTONE_MONSTER_RARITY: 'Monsterseltenheit: ',
+  WAYSTONE_EFFECTIVENESS: 'Monster-Schlagkraft: ',
   DOUBLE_CORRUPTED: 'Doppelt verderbt',
   UNIQUE_MODIFIER: 'Einzigartiger Modifikator',
   VAAL_UNIQUE_MODIFIER: 'Einzigartiger Vaal-Modifikator',

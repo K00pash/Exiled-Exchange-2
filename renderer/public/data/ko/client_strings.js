@@ -95,6 +95,8 @@ export default {
   WAYSTONE_RARE_MONSTERS: '희귀 몬스터: ',
   WAYSTONE_DROP_CHANCE: '경로석 출현 확률: ',
   WAYSTONE_RARITY: '아이템 희귀도: ',
+  WAYSTONE_MONSTER_RARITY: '몬스터 희귀도: ',
+  WAYSTONE_EFFECTIVENESS: '몬스터 효율: ',
   DOUBLE_CORRUPTED: '두 번 타락',
   UNIQUE_MODIFIER: '고유 속성 부여',
   VAAL_UNIQUE_MODIFIER: '바알 고유 속성',

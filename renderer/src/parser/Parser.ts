@@ -133,7 +133,6 @@ const parsers: Array<ParserFn | { virtual: VirtualParserFn }> = [
   parseSynthesised,
   parseCategoryByHelpText,
   { virtual: normalizeName },
-  parseVaalGemName,
   { virtual: findInDatabase },
   // -----------
   parseItemLevel,
@@ -313,15 +312,7 @@ function findInDatabase(item: ParserState) {
   } else {
     info = ITEM_BY_REF("ITEM", item.baseType ?? item.name);
   }
-  if (!info?.length) {
-    // First attempt to find item in trade items data
-    info = TRADE_ITEM_BY_REF({
-      name: item.name,
-      category: item.category,
-      rarity: item.rarity,
-      baseType: item.baseType,
-    });
-  }
+
   if (!info?.length) {
     // BUG[UPSTREAM]: https://www.pathofexile.com/forum/view-thread/3913283
     if (item.category === ItemCategory.DivinationCard) {
@@ -339,10 +330,20 @@ function findInDatabase(item: ParserState) {
     } else {
       info = ITEM_BY_TRANSLATED("ITEM", item.baseType ?? item.name);
     }
+  }
+  if (!info?.length) {
+    // First attempt to find item in trade items data
+    info = TRADE_ITEM_BY_REF({
+      name: item.name,
+      category: item.category,
+      rarity: item.rarity,
+      baseType: item.baseType,
+    });
     if (!info?.length) {
       return err("item.unknown");
     }
   }
+
   if (info[0].unique) {
     const uniqueInfo = info.filter(
       (info) => info.unique!.base === item.baseType,
@@ -369,11 +370,6 @@ function findInDatabase(item: ParserState) {
         item.info.unique.base,
       )![0].craftable!.category;
     }
-  }
-
-  // Override charm since its flask in trade
-  if (item.category === ItemCategory.Charm) {
-    item.category = ItemCategory.Flask;
   }
 }
 
@@ -434,6 +430,22 @@ function parseWaystone(section: string[], item: ParsedItem) {
       if (line.startsWith(_$.WAYSTONE_RARITY)) {
         item.mapItemRarity = parseInt(
           line.slice(_$.WAYSTONE_RARITY.length),
+          10,
+        );
+        continue;
+      }
+
+      if (line.startsWith(_$.WAYSTONE_MONSTER_RARITY)) {
+        item.mapMonsterRarity = parseInt(
+          line.slice(_$.WAYSTONE_MONSTER_RARITY.length),
+          10,
+        );
+        continue;
+      }
+
+      if (line.startsWith(_$.WAYSTONE_EFFECTIVENESS)) {
+        item.mapEffectiveness = parseInt(
+          line.slice(_$.WAYSTONE_EFFECTIVENESS.length),
           10,
         );
         continue;
@@ -736,6 +748,9 @@ function parseTalismanTier(section: string[], item: ParsedItem) {
   return "SECTION_SKIPPED";
 }
 
+// disabling cause of https://github.com/Kvan7/Exiled-Exchange-2/issues/954
+// will come back if vaal gems are added later, will need to be reworked completely
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function parseVaalGemName(section: string[], item: ParserState) {
   performance.mark("parseVaalGemName");
   if (item.category !== ItemCategory.Gem) return "PARSER_SKIPPED";

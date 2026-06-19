@@ -30,6 +30,8 @@ export class TestItem implements ParsedItem {
   mapDropChance?: number;
   mapMagicMonsters?: number;
   mapRareMonsters?: number;
+  mapMonsterRarity?: number;
+  mapEffectiveness?: number;
   gemLevel?: number | undefined;
   areaLevel?: number | undefined;
   talismanTier?: number | undefined;
@@ -771,6 +773,9 @@ Magic Monsters: +30% (augmented)
 Rare Monsters: +71% (augmented)
 Waystone Drop Chance: +90% (augmented)
 Item Rarity: +17% (augmented)
+Monster Rarity: +32% (augmented)
+Item Rarity: +17% (augmented)
+Monster Effectiveness: +45% (augmented)
 --------
 Item Level: 79
 --------
@@ -804,6 +809,8 @@ RareMapFakeAllProps.mapMagicMonsters = 30;
 RareMapFakeAllProps.mapRareMonsters = 71;
 RareMapFakeAllProps.mapDropChance = 90;
 RareMapFakeAllProps.mapItemRarity = 17;
+RareMapFakeAllProps.mapMonsterRarity = 32;
+RareMapFakeAllProps.mapEffectiveness = 45;
 RareMapFakeAllProps.sectionCount = 6;
 // #endregion RareMapFakeAllProps
 
@@ -1220,3 +1227,42 @@ UnidentifiedTier.isUnidentified = true;
 UnidentifiedTier.unidentifiedTier = 4;
 
 // #endregion UnidentifiedTier
+
+// #region CharmQuality
+export const CharmQuality = new TestItem(`Item Class: Charms
+Rarity: Magic
+Sprouting Silver Charm of the Bountiful
+--------
+Quality: +14% (augmented)
+Lasts 3.40 (augmented) Seconds
+Consumes 20 of 60 (augmented) Charges on use
+Currently has 0 Charges
+Your speed is unaffected by Slows
+--------
+Requires: Level 37
+--------
+Item Level: 80
+--------
+{ Implicit Modifier }
+Used when you are affected by a Slow — Unscalable Value
+--------
+{ Prefix Modifier "Sprouting" (Tier: 5) — Charm, Life }
+Recover 106(96-130) Life when Used
+{ Suffix Modifier "of the Bountiful" (Tier: 3) }
+51(47-54)% increased Charges
+--------
+Used automatically when condition is met. Can only hold charges while in belt. Refill at Wells or by killing monsters.
+`);
+
+CharmQuality.category = ItemCategory.Charm;
+CharmQuality.rarity = ItemRarity.Magic;
+CharmQuality.itemLevel = 80;
+CharmQuality.quality = 14;
+
+CharmQuality.info.refName = "Silver Charm";
+CharmQuality.sectionCount = 7;
+CharmQuality.implicitCount = 1;
+CharmQuality.prefixCount = 1;
+CharmQuality.suffixCount = 1;
+
+// #endregion CharmQuality

@@ -39,7 +39,7 @@
     >
       {{ result.level }}
     </td>
-    <td v-if="isGem" class="pl-2 whitespace-nowrap">
+    <td v-if="isGem || grantsSkill" class="pl-2 whitespace-nowrap">
       {{ result.gemSockets }}
     </td>
     <td
@@ -122,7 +122,7 @@ import "tippy.js/dist/tippy.css";
 import { AppConfig } from "@/web/Config";
 import { ItemCategory } from "@/parser";
 import TooltipItem from "./TooltipItem.vue";
-import { GEM } from "@/parser/meta";
+import { GEM, GRANTS_REAL_SKILL } from "@/parser/meta";
 
 export default defineComponent({
   name: "TradeItem",
@@ -225,6 +225,9 @@ export default defineComponent({
       isGem: computed(
         () => props.item.category && GEM.has(props.item.category),
       ),
+      grantsSkill: computed(
+        () => props.item.category && GRANTS_REAL_SKILL.has(props.item.category),
+      ),
     };
   },
 });
@@ -243,5 +246,9 @@ div[data-tippy-root] .tippy-box[data-theme~="item-tooltip"] {
 
 .tippy-box[data-theme~="item-tooltip"] .tippy-content {
   @apply p-0 w-fit h-fit;
+}
+
+.tippy-box[data-theme~="item-tooltip"] > .tippy-arrow::before {
+  @apply text-white;
 }
 </style>

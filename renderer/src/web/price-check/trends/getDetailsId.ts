@@ -54,6 +54,13 @@ export function getDetailsId(item: ParsedItem) {
   if (item.rarity === ItemRarity.Unique) {
     return forUniqueItem(item);
   }
+  if (item.category === ItemCategory.Tablet) {
+    return {
+      ns: item.info.namespace,
+      name: item.info.refName,
+      variant: variant([item.rarity ? item.rarity.toString() : ""]),
+    };
+  }
   if (isValuableBasetype(item)) {
     return forBasetype(item);
   }
