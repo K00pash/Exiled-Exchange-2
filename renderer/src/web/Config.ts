@@ -141,6 +141,7 @@ export interface Config {
   windowTitle: string;
   logKeys: boolean;
   accountName: string;
+  poesessid?: string;
   stashScroll: boolean;
   language: "en" | "ru" | "cmn-Hant" | "ko" | "ja" | "de" | "es" | "pt" | "fr";
   preferredTradeSite: "default" | "www";
@@ -832,5 +833,6 @@ function getConfigForHost(): HostConfig {
     libraryAlpha: config.enableAlphas && config.alphas.includes("library"),
     libraryOutputPath: library.libraryOutputPath,
     initialDelay: priceCheck.initialDelay,
+    poesessid: config.poesessid ?? null,
   };
 }

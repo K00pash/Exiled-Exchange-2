@@ -52,6 +52,21 @@
       </div>
     </div>
     <div class="mb-2">
+      <div class="flex-1 mb-1">POESESSID</div>
+      <div class="mb-1">
+        <input
+          v-model="poesessid"
+          type="password"
+          placeholder="POESESSID cookie"
+          class="rounded bg-gray-900 px-1 block w-full mb-1 font-poe"
+        />
+      </div>
+      <div class="mb-4 italic text-gray-500">
+        Live official-trade prices for rares/uniques. Paste your POESESSID
+        cookie from pathofexile.com — stored locally only.
+      </div>
+    </div>
+    <div class="mb-2">
       <div class="flex-1 mb-1">{{ t(":show_seller") }}</div>
       <div class="mb-1 flex">
         <ui-radio v-model="showSeller" :value="false" class="mr-4">{{
@@ -295,6 +310,7 @@ export default defineComponent({
         },
       }),
       accountName: configModelValue(() => props.config, "accountName"),
+      poesessid: configModelValue(() => props.config, "poesessid"),
       showSeller: configModelValue(() => configWidget.value, "showSeller"),
       activateStockFilter: configModelValue(
         () => configWidget.value,

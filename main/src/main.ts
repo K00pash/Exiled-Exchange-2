@@ -1,6 +1,6 @@
 "use strict";
 
-import { app, systemPreferences } from "electron";
+import { app, systemPreferences, session } from "electron";
 import { uIOhook } from "uiohook-napi";
 import os from "node:os";
 import { startServer, eventPipe, server } from "./server";
@@ -19,6 +19,30 @@ import { FileWriter } from "./host-files/FileWriter";
 
 if (!app.requestSingleInstanceLock()) {
   app.exit();
+}
+
+// Inject the user's POESESSID into the Electron session cookie jar so the
+// proxy (which uses `useSessionCookies`) makes authenticated official trade
+// requests. Domain ".pathofexile.com" covers www/ru/de/es/br/fr/jp subdomains.
+async function applyPoesessid(value: string | null, logger: Logger) {
+  try {
+    const ses = session.defaultSession;
+    if (value) {
+      await ses.cookies.set({
+        url: "https://www.pathofexile.com",
+        name: "POESESSID",
+        value,
+        domain: ".pathofexile.com",
+        path: "/",
+        secure: true,
+        httpOnly: true,
+      });
+    } else {
+      await ses.cookies.remove("https://www.pathofexile.com", "POESESSID");
+    }
+  } catch (err) {
+    logger.write(`error [POESESSID] ${(err as Error).message}`);
+  }
 }
 
 if (process.platform !== "darwin") {
@@ -105,6 +129,7 @@ let tray: AppTray;
           "CLIENT->MAIN::update-host-config",
           (cfg) => {
             overlay.updateOpts(cfg.overlayKey, cfg.windowTitle);
+            void applyPoesessid(cfg.poesessid, logger);
             shortcuts.updateActions(
               cfg.shortcuts,
               cfg.stashScroll,

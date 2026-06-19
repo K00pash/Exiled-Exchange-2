@@ -12,6 +12,7 @@ export interface HostConfig {
   libraryAlpha: boolean;
   libraryOutputPath: string | null;
   initialDelay: number;
+  poesessid: string | null;
 }
 
 export interface ShortcutAction {
